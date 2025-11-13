@@ -382,6 +382,39 @@
     .tab-panels{width:100%;}
     .tab-panel{display:none;}
     .tab-panel.active{display:block;}
+
+    @media (max-width:600px){
+      .page-shell{
+        padding:1.25rem 0.75rem 2rem;
+      }
+      .card{
+        padding:1rem 0.85rem 0.9rem;
+      }
+      .card-header{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:0.35rem;
+      }
+      .list-top{
+        gap:0.5rem;
+      }
+      .filters{
+        flex-direction:column;
+      }
+      .filter-group{
+        min-width:100%;
+      }
+      .tabs{
+        gap:0.35rem;
+      }
+      .tab-button{
+        width:100%;
+        justify-content:center;
+      }
+      .form-actions{
+        justify-content:flex-start;
+      }
+    }
   </style>
 </head>
 <body>
@@ -655,485 +688,471 @@
   </div>
 
   <script type="module">
-    /* =========================
-       BEGIN_CODIGO_FIREBASE
-       (mantido exatamente como enviado)
-    ========================= */
+    // BEGIN_FIREBASE_CONFIG
     // Import the functions you need from the SDKs you need
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
 
     // Your web app's Firebase configuration
     const firebaseConfig = {
-      apiKey: "AIzaSyDGfwKBCWVnprgd-WkZqaNsHy1jl91LG4o",
+      apiKey: "AIzaSyDgfWkKBCWnprgd-WkZqaNshY1j19l1G4o",
       authDomain: "cadastro-de-colaborador.firebaseapp.com",
       projectId: "cadastro-de-colaborador",
-      storageBucket: "cadastro-de-colaborador.firebasestorage.app",
+      storageBucket: "cadastro-de-colaborador.appspot.com",
       messagingSenderId: "1002016166104",
       appId: "1:1002016166104:web:4c98ac488dbfdd3a93c7ad"
     };
 
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
-    /* =========================
-       END_CODIGO_FIREBASE
-    ========================= */
+    // END_FIREBASE_CONFIG
 
-    // Exposição controlada do Firebase sem quebrar o app caso algo mude no futuro
-    window.firebaseSvc = { app };
+    (function(){
+      const STORAGE_KEY="cadastroColaboradoresFinanceiroJailton";
+      let colaboradores=[];
+      let editingIndex=null;
+      let currentStatusFilter="Todos";
+      let currentEmpresaFilter="Todas";
+      let currentSearchTerm="";
 
-    // =========================
-    // Helpers
-    // =========================
-    const $ = (sel)=>document.querySelector(sel);
-    const $$ = (sel)=>document.querySelectorAll(sel);
-
-    // =========================
-    // Estado
-    // =========================
-    const STORAGE_KEY = "cadastroColaboradoresFinanceiroJailton";
-    let colaboradores = [];
-    let editingIndex = null;
-    let currentStatusFilter = "Todos";
-    let currentEmpresaFilter = "Todas";
-    let currentSearchTerm = "";
-
-    // =========================
-    // Elementos
-    // =========================
-    const form = $("#form-colaborador");
-    const campos = {
-      empresa:$("#empresa"),
-      nome:$("#nome"),
-      cpf:$("#cpf"),
-      cargo:$("#cargo"),
-      setor:$("#setor"),
-      contato:$("#contato"),
-      dataAdmissao:$("#dataAdmissao"),
-      status:$("#status"),
-      dataDesligamento:$("#dataDesligamento"),
-      formaPagamento:$("#formaPagamento"),
-      tipoChavePix:$("#tipoChavePix"),
-      chavePix:$("#chavePix"),
-      banco:$("#banco"),
-      agencia:$("#agencia"),
-      conta:$("#conta"),
-      tipoConta:$("#tipoConta"),
-      dataAtualizacao:$("#dataAtualizacao"),
-      responsavelAtualizacao:$("#responsavelAtualizacao"),
-      observacoes:$("#observacoes")
-    };
-    const badgeModo = $("#badgeModo");
-    const resumoTotal = $("#resumoTotal");
-    const filtroStatus = $("#filtroStatus");
-    const filtroEmpresa = $("#filtroEmpresa");
-    const buscaTexto = $("#buscaTexto");
-    const tabelaBody = document.querySelector("#tabela-colaboradores tbody");
-    const btnNovo = $("#btnNovo");
-    const btnCancelar = $("#btnCancelar");
-    const tabButtons = $$(".tab-button");
-    const tabPanels = $$(".tab-panel");
-    const btnAddFormaPagamento = document.querySelector(".btn-add-option[data-target='formaPagamento']");
-    const btnManageFormaPagamento = document.querySelector(".btn-manage-option[data-target='formaPagamento']");
-
-    // =========================
-    // Local Storage
-    // =========================
-    function carregarDoLocalStorage(){
-      try{
-        const dados = localStorage.getItem(STORAGE_KEY);
-        colaboradores = dados ? (JSON.parse(dados)||[]) : [];
-        if(!Array.isArray(colaboradores)) colaboradores = [];
-      }catch(_){ colaboradores = []; }
-    }
-    function salvarNoLocalStorage(){
-      try{
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(colaboradores));
-      }catch(_){
-        alert("Não foi possível salvar os dados no navegador.");
-      }
-    }
-
-    // =========================
-    // UI / Tabs
-    // =========================
-    function setActiveTab(tabName){
-      tabButtons.forEach(btn=>{
-        btn.classList.toggle("active", btn.dataset.tab===tabName);
-      });
-      tabPanels.forEach(panel=>{
-        panel.classList.toggle("active", panel.dataset.panel===tabName);
-      });
-    }
-    function atualizarBadgeModo(){
-      if(editingIndex===null){
-        badgeModo.textContent = "Modo: Novo cadastro";
-        badgeModo.classList.remove("editing");
-      }else{
-        const nome = (colaboradores[editingIndex] && colaboradores[editingIndex].nome) ? colaboradores[editingIndex].nome : "";
-        badgeModo.textContent = nome ? ("Modo: Editando – " + nome) : "Modo: Editando registro";
-        badgeModo.classList.add("editing");
-      }
-    }
-    function ajustarCampoDesligamento(){
-      if(campos.status.value==="Ativo"){
-        campos.dataDesligamento.value="";
-        campos.dataDesligamento.disabled=true;
-      }else{
-        campos.dataDesligamento.disabled=false;
-      }
-    }
-
-    // =========================
-    // Form / Masks / Validations
-    // =========================
-    function formatarCPF(valor){
-      const digits=(valor||"").replace(/\D/g,"").slice(0,11);
-      if(!digits) return "";
-      if(digits.length<=3)  return digits;
-      if(digits.length<=6)  return digits.slice(0,3)+"."+digits.slice(3);
-      if(digits.length<=9)  return digits.slice(0,3)+"."+digits.slice(3,6)+"."+digits.slice(6);
-      return digits.slice(0,3)+"."+digits.slice(3,6)+"."+digits.slice(6,9)+"-"+digits.slice(9);
-    }
-    function formatarDataBR(valor){
-      if(!valor) return "";
-      const iso=/^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
-      if(iso){ return iso[3]+"/"+iso[2]+"/"+iso[1]; }
-      const br=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor);
-      if(br){ return valor; }
-      return valor;
-    }
-    function validarFormulario(){
-      if(!campos.nome.value.trim()){
-        alert('Preencha o campo "Nome completo".'); campos.nome.focus(); return false;
-      }
-      if(!campos.cpf.value.trim()){
-        alert('Preencha o campo "CPF".'); campos.cpf.focus(); return false;
-      }
-      if(!campos.empresa.value.trim()){
-        alert('Selecione a "Empresa pagadora".'); campos.empresa.focus(); return false;
-      }
-      if(!campos.status.value.trim()){
-        alert('Selecione o "Status".'); campos.status.focus(); return false;
-      }
-      if(!campos.tipoChavePix.value.trim()){
-        alert('Selecione o "Tipo de chave Pix".'); campos.tipoChavePix.focus(); return false;
-      }
-      if(!campos.chavePix.value.trim()){
-        alert('Preencha a "Chave Pix".'); campos.chavePix.focus(); return false;
-      }
-      if(campos.status.value==="Desligado" && !campos.dataDesligamento.value){
-        const confirma = confirm("Status está como 'Desligado', mas a data de desligamento está vazia. Deseja continuar mesmo assim?");
-        if(!confirma){ campos.dataDesligamento.focus(); return false; }
-      }
-      if(editingIndex!==null){
-        if(!campos.dataAtualizacao.value){
-          alert('Ao editar, preencha a "Data da última atualização da chave".'); campos.dataAtualizacao.focus(); return false;
-        }
-        if(!campos.responsavelAtualizacao.value.trim()){
-          alert('Ao editar, informe o "Responsável pela atualização".'); campos.responsavelAtualizacao.focus(); return false;
-        }
-      }
-      return true;
-    }
-    function coletarDadosDoFormulario(){
-      return{
-        empresa:campos.empresa.value.trim(),
-        nome:campos.nome.value.trim(),
-        cpf:formatarCPF(campos.cpf.value),
-        cargo:campos.cargo.value.trim(),
-        setor:campos.setor.value.trim(),
-        contato:(campos.contato.value||"").trim(),
-        dataAdmissao:campos.dataAdmissao.value,
-        status:campos.status.value,
-        dataDesligamento:campos.status.value==="Ativo"?"":campos.dataDesligamento.value,
-        formaPagamento:campos.formaPagamento.value,
-        tipoChavePix:campos.tipoChavePix.value,
-        chavePix:campos.tipoChavePix.value==="CPF"?formatarCPF(campos.chavePix.value):campos.chavePix.value.trim(),
-        banco:campos.banco.value.trim(),
-        agencia:campos.agencia.value.trim(),
-        conta:campos.conta.value.trim(),
-        tipoConta:campos.tipoConta.value,
-        dataAtualizacao:campos.dataAtualizacao.value,
-        responsavelAtualizacao:campos.responsavelAtualizacao.value.trim(),
-        observacoes:campos.observacoes.value.trim()
+      const form=document.getElementById("form-colaborador");
+      const campos={
+        empresa:document.getElementById("empresa"),
+        nome:document.getElementById("nome"),
+        cpf:document.getElementById("cpf"),
+        cargo:document.getElementById("cargo"),
+        setor:document.getElementById("setor"),
+        contato:document.getElementById("contato"),
+        dataAdmissao:document.getElementById("dataAdmissao"),
+        status:document.getElementById("status"),
+        dataDesligamento:document.getElementById("dataDesligamento"),
+        formaPagamento:document.getElementById("formaPagamento"),
+        tipoChavePix:document.getElementById("tipoChavePix"),
+        chavePix:document.getElementById("chavePix"),
+        banco:document.getElementById("banco"),
+        agencia:document.getElementById("agencia"),
+        conta:document.getElementById("conta"),
+        tipoConta:document.getElementById("tipoConta"),
+        dataAtualizacao:document.getElementById("dataAtualizacao"),
+        responsavelAtualizacao:document.getElementById("responsavelAtualizacao"),
+        observacoes:document.getElementById("observacoes")
       };
-    }
-    function preencherFormulario(colaborador){
-      campos.empresa.value=colaborador.empresa||"";
-      campos.nome.value=colaborador.nome||"";
-      campos.cpf.value=colaborador.cpf||"";
-      campos.cargo.value=colaborador.cargo||"";
-      campos.setor.value=colaborador.setor||"";
-      campos.contato.value=colaborador.contato||"";
-      campos.dataAdmissao.value=colaborador.dataAdmissao||"";
-      campos.status.value=colaborador.status||"Ativo";
-      campos.dataDesligamento.value=colaborador.dataDesligamento||"";
-      campos.formaPagamento.value=colaborador.formaPagamento||"Pix";
-      campos.tipoChavePix.value=colaborador.tipoChavePix||"";
-      campos.chavePix.value=colaborador.chavePix||"";
-      campos.banco.value=colaborador.banco||"";
-      campos.agencia.value=colaborador.agencia||"";
-      campos.conta.value=colaborador.conta||"";
-      campos.tipoConta.value=colaborador.tipoConta||"";
-      campos.dataAtualizacao.value=colaborador.dataAtualizacao||"";
-      campos.responsavelAtualizacao.value=colaborador.responsavelAtualizacao||"";
-      campos.observacoes.value=colaborador.observacoes||"";
-      ajustarCampoDesligamento();
-    }
 
-    // =========================
-    // Filtro / Busca
-    // =========================
-    function aplicarFiltros(lista){
-      return lista
-        .map((c,index)=>({data:c,index}))
-        .filter(item=>{
-          const c=item.data;
-          if(currentStatusFilter!=="Todos" && c.status!==currentStatusFilter) return false;
-          if(currentEmpresaFilter!=="Todas" && c.empresa!==currentEmpresaFilter) return false;
-          if(currentSearchTerm){
-            const rawTerm=currentSearchTerm;
-            const nome=(c.nome||"").toLowerCase();
-            const contato=(c.contato||"").toLowerCase();
-            const cpfDigits=(c.cpf||"").replace(/\D/g,"");
-            const termDigits=rawTerm.replace(/\D/g,"");
-            const byName=nome.includes(rawTerm);
-            const byContato=contato.includes(rawTerm);
-            const byCpf=termDigits?cpfDigits.includes(termDigits):false;
-            if(!byName && !byContato && !byCpf) return false;
-          }
-          return true;
-        });
-    }
-    function atualizarResumoTotal(){
-      const total=colaboradores.length;
-      const ativos=colaboradores.filter(c=>c.status==="Ativo").length;
-      resumoTotal.textContent = total===0 ? "Nenhum colaborador cadastrado." : `${ativos} ativos de ${total} cadastrados.`;
-    }
+      const badgeModo=document.getElementById("badgeModo");
+      const resumoTotal=document.getElementById("resumoTotal");
+      const filtroStatus=document.getElementById("filtroStatus");
+      const filtroEmpresa=document.getElementById("filtroEmpresa");
+      const buscaTexto=document.getElementById("buscaTexto");
+      const tabelaBody=document.querySelector("#tabela-colaboradores tbody");
+      const btnNovo=document.getElementById("btnNovo");
+      const btnCancelar=document.getElementById("btnCancelar");
+      const tabButtons=document.querySelectorAll(".tab-button");
+      const tabPanels=document.querySelectorAll(".tab-panel");
+      const btnAddFormaPagamento=document.querySelector(".btn-add-option[data-target='formaPagamento']");
+      const btnManageFormaPagamento=document.querySelector(".btn-manage-option[data-target='formaPagamento']");
 
-    // =========================
-    // Tabela
-    // =========================
-    function renderizarTabela(){
-      tabelaBody.innerHTML="";
-      const filtrados = aplicarFiltros(colaboradores);
-      if(!filtrados.length){
-        const tr=document.createElement("tr");
-        const td=document.createElement("td");
-        td.colSpan=11;
-        td.className="td-empty";
-        td.textContent="Nenhum colaborador encontrado com os filtros atuais.";
-        tr.appendChild(td);
-        tabelaBody.appendChild(tr);
-        atualizarResumoTotal();
-        return;
+      function carregarDoLocalStorage(){
+        try{
+          const dados=localStorage.getItem(STORAGE_KEY);
+          colaboradores=dados?JSON.parse(dados)||[]:[];
+          if(!Array.isArray(colaboradores)){colaboradores=[];}
+        }catch(e){colaboradores=[];}
       }
-      const frag = document.createDocumentFragment();
-      filtrados.forEach(item=>{
-        const c=item.data; const index=item.index;
-        const tr=document.createElement("tr");
-        const addCell=(text,cls)=>{
-          const td=document.createElement("td");
-          if(cls) td.className=cls;
-          td.textContent=text||"";
-          tr.appendChild(td);
+
+      function salvarNoLocalStorage(){
+        try{
+          localStorage.setItem(STORAGE_KEY,JSON.stringify(colaboradores));
+        }catch(e){
+          alert("Não foi possível salvar os dados no navegador.");
+        }
+      }
+
+      function setActiveTab(tabName){
+        tabButtons.forEach(function(btn){
+          if(btn.dataset.tab===tabName){btn.classList.add("active");}
+          else{btn.classList.remove("active");}
+        });
+        tabPanels.forEach(function(panel){
+          if(panel.dataset.panel===tabName){panel.classList.add("active");}
+          else{panel.classList.remove("active");}
+        });
+      }
+
+      function atualizarBadgeModo(){
+        if(editingIndex===null){
+          badgeModo.textContent="Modo: Novo cadastro";
+          badgeModo.classList.remove("editing");
+        }else{
+          const nome=colaboradores[editingIndex]&&colaboradores[editingIndex].nome?colaboradores[editingIndex].nome:"";
+          badgeModo.textContent=nome?"Modo: Editando – "+nome:"Modo: Editando registro";
+          badgeModo.classList.add("editing");
+        }
+      }
+
+      function ajustarCampoDesligamento(){
+        if(campos.status.value==="Ativo"){
+          campos.dataDesligamento.value="";
+          campos.dataDesligamento.disabled=true;
+        }else if(campos.status.value==="Desligado"){
+          campos.dataDesligamento.disabled=false;
+        }else{
+          campos.dataDesligamento.disabled=false;
+        }
+      }
+
+      function resetarFormulario(){
+        form.reset();
+        editingIndex=null;
+        atualizarBadgeModo();
+        campos.status.value="Ativo";
+        ajustarCampoDesligamento();
+      }
+
+      function formatarCPF(valor){
+        const digits=(valor||"").replace(/\D/g,"").slice(0,11);
+        if(!digits)return"";
+        if(digits.length<=3)return digits;
+        if(digits.length<=6)return digits.slice(0,3)+"."+digits.slice(3);
+        if(digits.length<=9)return digits.slice(0,3)+"."+digits.slice(3,6)+"."+digits.slice(6);
+        return digits.slice(0,3)+"."+digits.slice(3,6)+"."+digits.slice(6,9)+"-"+digits.slice(9);
+      }
+
+      function formatarDataBR(valor){
+        if(!valor)return"";
+        const iso=/^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+        if(iso){return iso[3]+"/"+iso[2]+"/"+iso[1];}
+        const br=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(valor);
+        if(br){return valor;}
+        return valor;
+      }
+
+      function validarFormulario(){
+        if(!campos.nome.value.trim()){
+          alert('Preencha o campo "Nome completo".');
+          campos.nome.focus();return false;
+        }
+        if(!campos.cpf.value.trim()){
+          alert('Preencha o campo "CPF".');
+          campos.cpf.focus();return false;
+        }
+        if(!campos.empresa.value.trim()){
+          alert('Selecione a "Empresa pagadora".');
+          campos.empresa.focus();return false;
+        }
+        if(!campos.status.value.trim()){
+          alert('Selecione o "Status".');
+          campos.status.focus();return false;
+        }
+        if(!campos.tipoChavePix.value.trim()){
+          alert('Selecione o "Tipo de chave Pix".');
+          campos.tipoChavePix.focus();return false;
+        }
+        if(!campos.chavePix.value.trim()){
+          alert('Preencha a "Chave Pix".');
+          campos.chavePix.focus();return false;
+        }
+        if(campos.status.value==="Desligado"&&!campos.dataDesligamento.value){
+          const confirma=confirm("Status está como 'Desligado', mas a data de desligamento está vazia. Deseja continuar mesmo assim?");
+          if(!confirma){
+            campos.dataDesligamento.focus();return false;
+          }
+        }
+        if(editingIndex!==null){
+          if(!campos.dataAtualizacao.value){
+            alert('Ao editar, preencha a "Data da última atualização da chave".');
+            campos.dataAtualizacao.focus();return false;
+          }
+          if(!campos.responsavelAtualizacao.value.trim()){
+            alert('Ao editar, informe o "Responsável pela atualização".');
+            campos.responsavelAtualizacao.focus();return false;
+          }
+        }
+        return true;
+      }
+
+      function coletarDadosDoFormulario(){
+        return{
+          empresa:campos.empresa.value.trim(),
+          nome:campos.nome.value.trim(),
+          cpf:formatarCPF(campos.cpf.value),
+          cargo:campos.cargo.value.trim(),
+          setor:campos.setor.value.trim(),
+          contato:(campos.contato.value||"").trim(),
+          dataAdmissao:campos.dataAdmissao.value,
+          status:campos.status.value,
+          dataDesligamento:campos.status.value==="Ativo"?"":campos.dataDesligamento.value,
+          formaPagamento:campos.formaPagamento.value,
+          tipoChavePix:campos.tipoChavePix.value,
+          chavePix:campos.tipoChavePix.value==="CPF"?formatarCPF(campos.chavePix.value):campos.chavePix.value.trim(),
+          banco:campos.banco.value.trim(),
+          agencia:campos.agencia.value.trim(),
+          conta:campos.conta.value.trim(),
+          tipoConta:campos.tipoConta.value,
+          dataAtualizacao:campos.dataAtualizacao.value,
+          responsavelAtualizacao:campos.responsavelAtualizacao.value.trim(),
+          observacoes:campos.observacoes.value.trim()
         };
-        addCell(c.empresa||"");
-        addCell(c.nome||"");
-        addCell(c.cpf||"","td-nowrap");
-        addCell(c.setor||"");
-        addCell(c.contato||"");
-        addCell(c.status||"");
-        addCell(c.tipoChavePix||"");
-        addCell(c.chavePix||"");
-        addCell(formatarDataBR(c.dataAtualizacao||""),"td-nowrap");
-        addCell(c.responsavelAtualizacao||"");
+      }
 
-        const tdAcoes=document.createElement("td");
-        tdAcoes.className="td-actions";
+      function preencherFormulario(colaborador){
+        campos.empresa.value=colaborador.empresa||"";
+        campos.nome.value=colaborador.nome||"";
+        campos.cpf.value=colaborador.cpf||"";
+        campos.cargo.value=colaborador.cargo||"";
+        campos.setor.value=colaborador.setor||"";
+        campos.contato.value=colaborador.contato||"";
+        campos.dataAdmissao.value=colaborador.dataAdmissao||"";
+        campos.status.value=colaborador.status||"Ativo";
+        campos.dataDesligamento.value=colaborador.dataDesligamento||"";
+        campos.formaPagamento.value=colaborador.formaPagamento||"Pix";
+        campos.tipoChavePix.value=colaborador.tipoChavePix||"";
+        campos.chavePix.value=colaborador.chavePix||"";
+        campos.banco.value=colaborador.banco||"";
+        campos.agencia.value=colaborador.agencia||"";
+        campos.conta.value=colaborador.conta||"";
+        campos.tipoConta.value=colaborador.tipoConta||"";
+        campos.dataAtualizacao.value=colaborador.dataAtualizacao||"";
+        campos.responsavelAtualizacao.value=colaborador.responsavelAtualizacao||"";
+        campos.observacoes.value=colaborador.observacoes||"";
+        ajustarCampoDesligamento();
+      }
 
-        const btnEditar=document.createElement("button");
-        btnEditar.type="button";
-        btnEditar.textContent="Editar";
-        btnEditar.className="btn btn-table btn-table-edit";
-        btnEditar.addEventListener("click",()=>iniciarEdicao(index));
+      function aplicarFiltros(lista){
+        return lista
+          .map(function(c,index){return{data:c,index:index};})
+          .filter(function(item){
+            const c=item.data;
+            if(currentStatusFilter!=="Todos"&&c.status!==currentStatusFilter){return false;}
+            if(currentEmpresaFilter!=="Todas"&&c.empresa!==currentEmpresaFilter){return false;}
+            if(currentSearchTerm){
+              const rawTerm=currentSearchTerm;
+              const nome=(c.nome||"").toLowerCase();
+              const contato=(c.contato||"").toLowerCase();
+              const cpfDigits=(c.cpf||"").replace(/\D/g,"");
+              const termDigits=rawTerm.replace(/\D/g,"");
+              const byName=nome.indexOf(rawTerm)!==-1;
+              const byContato=contato.indexOf(rawTerm)!==-1;
+              const byCpf=termDigits?cpfDigits.indexOf(termDigits)!==-1:false;
+              if(!byName&&!byContato&&!byCpf){return false;}
+            }
+            return true;
+          });
+      }
 
-        const btnExcluir=document.createElement("button");
-        btnExcluir.type="button";
-        btnExcluir.textContent="Excluir";
-        btnExcluir.className="btn btn-table btn-table-delete";
-        btnExcluir.addEventListener("click",()=>excluirColaborador(index));
+      function atualizarResumoTotal(){
+        const total=colaboradores.length;
+        const ativos=colaboradores.filter(function(c){return c.status==="Ativo";}).length;
+        if(total===0){resumoTotal.textContent="Nenhum colaborador cadastrado.";}
+        else{resumoTotal.textContent=ativos+" ativos de "+total+" cadastrados.";}
+      }
 
-        tdAcoes.appendChild(btnEditar);
-        tdAcoes.appendChild(btnExcluir);
-        tr.appendChild(tdAcoes);
-        frag.appendChild(tr);
-      });
-      tabelaBody.appendChild(frag);
-      atualizarResumoTotal();
-    }
+      function renderizarTabela(){
+        tabelaBody.innerHTML="";
+        const filtrados=aplicarFiltros(colaboradores);
+        if(!filtrados.length){
+          const tr=document.createElement("tr");
+          const td=document.createElement("td");
+          td.colSpan=11;
+          td.className="td-empty";
+          td.textContent="Nenhum colaborador encontrado com os filtros atuais.";
+          tr.appendChild(td);
+          tabelaBody.appendChild(tr);
+          atualizarResumoTotal();
+          return;
+        }
+        filtrados.forEach(function(item){
+          const c=item.data;
+          const index=item.index;
+          const tr=document.createElement("tr");
+          function addCell(text,extraClass){
+            const td=document.createElement("td");
+            if(extraClass)td.className=extraClass;
+            td.textContent=text||"";
+            tr.appendChild(td);
+          }
+          addCell(c.empresa||"");
+          addCell(c.nome||"");
+          addCell(c.cpf||"","td-nowrap");
+          addCell(c.setor||"");
+          addCell(c.contato||"");
+          addCell(c.status||"");
+          addCell(c.tipoChavePix||"");
+          addCell(c.chavePix||"");
+          addCell(formatarDataBR(c.dataAtualizacao||""),"td-nowrap");
+          addCell(c.responsavelAtualizacao||"");
 
-    // =========================
-    // CRUD Local
-    // =========================
-    function iniciarEdicao(index){
-      const colaborador=colaboradores[index];
-      if(!colaborador) return;
-      editingIndex=index;
-      preencherFormulario(colaborador);
-      atualizarBadgeModo();
-      setActiveTab("cadastro");
-      window.scrollTo({top:0,behavior:"smooth"});
-    }
-    function excluirColaborador(index){
-      const colaborador=colaboradores[index];
-      if(!colaborador) return;
-      const nome=colaborador.nome||"";
-      const msg = nome ? `Confirma a exclusão do colaborador "${nome}"?` : "Confirma a exclusão deste colaborador?";
-      if(confirm(msg)){
-        colaboradores.splice(index,1);
+          const tdAcoes=document.createElement("td");
+          tdAcoes.className="td-actions";
+
+          const btnEditar=document.createElement("button");
+          btnEditar.type="button";
+          btnEditar.textContent="Editar";
+          btnEditar.className="btn btn-table btn-table-edit";
+          btnEditar.addEventListener("click",function(){iniciarEdicao(index);});
+
+          const btnExcluir=document.createElement("button");
+          btnExcluir.type="button";
+          btnExcluir.textContent="Excluir";
+          btnExcluir.className="btn btn-table btn-table-delete";
+          btnExcluir.addEventListener("click",function(){excluirColaborador(index);});
+
+          tdAcoes.appendChild(btnEditar);
+          tdAcoes.appendChild(btnExcluir);
+          tr.appendChild(tdAcoes);
+          tabelaBody.appendChild(tr);
+        });
+        atualizarResumoTotal();
+      }
+
+      function iniciarEdicao(index){
+        const colaborador=colaboradores[index];
+        if(!colaborador)return;
+        editingIndex=index;
+        preencherFormulario(colaborador);
+        atualizarBadgeModo();
+        setActiveTab("cadastro");
+        window.scrollTo({top:0,behavior:"smooth"});
+      }
+
+      function excluirColaborador(index){
+        const colaborador=colaboradores[index];
+        if(!colaborador)return;
+        const nome=colaborador.nome||"";
+        const msg=nome?'Confirma a exclusão do colaborador "'+nome+'"?':"Confirma a exclusão deste colaborador?";
+        if(confirm(msg)){
+          colaboradores.splice(index,1);
+          salvarNoLocalStorage();
+          renderizarTabela();
+          if(editingIndex===index){resetarFormulario();}
+          else if(editingIndex!==null&&index<editingIndex){
+            editingIndex=editingIndex-1;
+            atualizarBadgeModo();
+          }
+        }
+      }
+
+      function salvarColaborador(event){
+        event.preventDefault();
+        if(!validarFormulario())return;
+        const dados=coletarDadosDoFormulario();
+        if(editingIndex===null){colaboradores.push(dados);}
+        else{colaboradores[editingIndex]=dados;}
         salvarNoLocalStorage();
         renderizarTabela();
-        if(editingIndex===index){
+        resetarFormulario();
+        setActiveTab("lista");
+        alert("Registro salvo com sucesso.");
+      }
+
+      function configurarEventos(){
+        campos.status.addEventListener("change",ajustarCampoDesligamento);
+        form.addEventListener("submit",salvarColaborador);
+
+        btnNovo.addEventListener("click",function(){
           resetarFormulario();
-        }else if(editingIndex!==null && index<editingIndex){
-          editingIndex = editingIndex-1;
-          atualizarBadgeModo();
-        }
-      }
-    }
-    function salvarColaborador(event){
-      event.preventDefault();
-      if(!validarFormulario()) return;
-      const dados = coletarDadosDoFormulario();
-      if(editingIndex===null) colaboradores.push(dados);
-      else colaboradores[editingIndex]=dados;
-      salvarNoLocalStorage();
-      renderizarTabela();
-      resetarFormulario();
-      setActiveTab("lista");
-      alert("Registro salvo com sucesso.");
-    }
-
-    // =========================
-    // Form utils
-    // =========================
-    function resetarFormulario(){
-      form.reset();
-      editingIndex=null;
-      atualizarBadgeModo();
-      campos.status.value="Ativo";
-      ajustarCampoDesligamento();
-    }
-
-    // =========================
-    // Eventos
-    // =========================
-    function configurarEventos(){
-      campos.status.addEventListener("change", ajustarCampoDesligamento);
-      form.addEventListener("submit", salvarColaborador);
-
-      btnNovo.addEventListener("click", ()=>{
-        resetarFormulario();
-        setActiveTab("cadastro");
-      });
-      btnCancelar.addEventListener("click", ()=>{
-        if(editingIndex!==null){
-          const confirma = confirm("Você está editando um registro. Deseja descartar as alterações?");
-          if(!confirma) return;
-        }
-        resetarFormulario();
-      });
-
-      filtroStatus.addEventListener("change", ()=>{
-        currentStatusFilter=filtroStatus.value;
-        renderizarTabela();
-      });
-      filtroEmpresa.addEventListener("change", ()=>{
-        currentEmpresaFilter=filtroEmpresa.value;
-        renderizarTabela();
-      });
-      buscaTexto.addEventListener("input", ()=>{
-        currentSearchTerm=buscaTexto.value.toLowerCase().trim();
-        renderizarTabela();
-      });
-
-      tabButtons.forEach(btn=>{
-        btn.addEventListener("click", ()=> setActiveTab(btn.dataset.tab));
-      });
-
-      campos.cpf.addEventListener("input", ()=>{
-        campos.cpf.value = formatarCPF(campos.cpf.value);
-      });
-      campos.chavePix.addEventListener("input", ()=>{
-        if(campos.tipoChavePix.value==="CPF"){
-          campos.chavePix.value = formatarCPF(campos.chavePix.value);
-        }
-      });
-      campos.tipoChavePix.addEventListener("change", ()=>{
-        if(campos.tipoChavePix.value==="CPF"){
-          campos.chavePix.value = formatarCPF(campos.chavePix.value);
-        }
-      });
-
-      if(btnAddFormaPagamento){
-        btnAddFormaPagamento.addEventListener("click", ()=>{
-          const novo = prompt("Informe a nova forma de pagamento:");
-          const valor=(novo||"").trim();
-          if(!valor) return;
-          const select=campos.formaPagamento;
-          const jaExiste=[...select.options].some(opt=> opt.value.toLowerCase()===valor.toLowerCase());
-          if(!jaExiste){
-            const opt=document.createElement("option");
-            opt.value=valor; opt.textContent=valor;
-            select.appendChild(opt);
-          }
-          select.value=valor;
+          setActiveTab("cadastro");
         });
-      }
-      if(btnManageFormaPagamento){
-        btnManageFormaPagamento.addEventListener("click", ()=>{
-          const select=campos.formaPagamento;
-          const atual=select.value;
-          if(atual==="Pix"||atual==="Dinheiro"){
-            alert("Só é possível editar ou remover formas personalizadas.");
-            return;
-          }
-          const novo=prompt('Edite o nome da forma de pagamento ou deixe em branco para remover:',atual);
-          if(novo===null) return;
-          const texto=(novo||"").trim();
-          if(!texto){
-            const idx=select.selectedIndex;
-            if(idx>-1) select.remove(idx);
-            select.value="Pix";
-            return;
-          }
-          const opt=select.options[select.selectedIndex];
-          opt.value=texto; opt.textContent=texto;
-          select.value=texto;
-        });
-      }
-    }
 
-    // =========================
-    // Boot
-    // =========================
-    function inicializar(){
-      // Garantir que a página funcione mesmo sem internet/Firebase
-      if(!window.firebaseSvc || !window.firebaseSvc.app){
-        console.warn("Firebase não disponível. O app continua funcional usando Local Storage.");
+        btnCancelar.addEventListener("click",function(){
+          if(editingIndex!==null){
+            const confirma=confirm("Você está editando um registro. Deseja descartar as alterações?");
+            if(!confirma)return;
+          }
+          resetarFormulario();
+        });
+
+        filtroStatus.addEventListener("change",function(){
+          currentStatusFilter=filtroStatus.value;
+          renderizarTabela();
+        });
+
+        filtroEmpresa.addEventListener("change",function(){
+          currentEmpresaFilter=filtroEmpresa.value;
+          renderizarTabela();
+        });
+
+        buscaTexto.addEventListener("input",function(){
+          currentSearchTerm=buscaTexto.value.toLowerCase().trim();
+          renderizarTabela();
+        });
+
+        tabButtons.forEach(function(btn){
+          btn.addEventListener("click",function(){
+            const tab=btn.dataset.tab;
+            setActiveTab(tab);
+          });
+        });
+
+        campos.cpf.addEventListener("input",function(){
+          campos.cpf.value=formatarCPF(campos.cpf.value);
+        });
+
+        campos.chavePix.addEventListener("input",function(){
+          if(campos.tipoChavePix.value==="CPF"){
+            campos.chavePix.value=formatarCPF(campos.chavePix.value);
+          }
+        });
+
+        campos.tipoChavePix.addEventListener("change",function(){
+          if(campos.tipoChavePix.value==="CPF"){
+            campos.chavePix.value=formatarCPF(campos.chavePix.value);
+          }
+        });
+
+        if(btnAddFormaPagamento){
+          btnAddFormaPagamento.addEventListener("click",function(){
+            const novo=prompt("Informe a nova forma de pagamento:");
+            const valor=(novo||"").trim();
+            if(!valor)return;
+            const select=campos.formaPagamento;
+            const jaExiste=Array.prototype.some.call(select.options,function(opt){
+              return opt.value.toLowerCase()===valor.toLowerCase();
+            });
+            if(!jaExiste){
+              const opt=document.createElement("option");
+              opt.value=valor;
+              opt.textContent=valor;
+              select.appendChild(opt);
+            }
+            select.value=valor;
+          });
+        }
+
+        if(btnManageFormaPagamento){
+          btnManageFormaPagamento.addEventListener("click",function(){
+            const select=campos.formaPagamento;
+            const atual=select.value;
+            if(atual==="Pix"||atual==="Dinheiro"){
+              alert("Só é possível editar ou remover formas personalizadas.");
+              return;
+            }
+            const novo=prompt('Edite o nome da forma de pagamento ou deixe em branco para remover:',atual);
+            if(novo===null)return;
+            const texto=(novo||"").trim();
+            if(!texto){
+              const idx=select.selectedIndex;
+              if(idx>-1){select.remove(idx);}
+              select.value="Pix";
+              return;
+            }
+            const opt=select.options[select.selectedIndex];
+            opt.value=texto;
+            opt.textContent=texto;
+            select.value=texto;
+          });
+        }
       }
-      carregarDoLocalStorage();
-      configurarEventos();
-      ajustarCampoDesligamento();
-      atualizarBadgeModo();
-      setActiveTab("lista");
-      renderizarTabela();
-    }
-    // Start
-    inicializar();
+
+      function inicializar(){
+        carregarDoLocalStorage();
+        configurarEventos();
+        ajustarCampoDesligamento();
+        atualizarBadgeModo();
+        setActiveTab("lista");
+        renderizarTabela();
+      }
+
+      inicializar();
+    })();
   </script>
 </body>
-</html><!--BUILD_OK-->
+</html>
