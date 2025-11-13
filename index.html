@@ -688,13 +688,19 @@
   </div>
 
   <script type="module">
-    // BEGIN_FIREBASE_CONFIG
-    // Import the functions you need from the SDKs you need
+    // Import SDKs Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    // TODO: Add SDKs for Firebase products that you want to use
-    // https://firebase.google.com/docs/web/setup#available-libraries
+    import {
+      getFirestore,
+      collection,
+      getDocs,
+      addDoc,
+      updateDoc,
+      deleteDoc,
+      doc
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-    // Your web app's Firebase configuration
+    // Configuração do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDGfwKBCWVnprgd-WkZqaNsHy1jl91LG4o",
       authDomain: "cadastro-de-colaborador.firebaseapp.com",
@@ -704,12 +710,13 @@
       appId: "1:1002016166104:web:4c98ac488dbfdd3a93c7ad"
     };
 
-    // Initialize Firebase
+    // Inicializa Firebase
     const app = initializeApp(firebaseConfig);
-    // END_FIREBASE_CONFIG
+    const db = getFirestore(app);
+    const colaboradoresCollection = collection(db, "colaboradores");
 
-    (function(){
-      let colaboradores=[];
+    (async function(){
+      let colaboradores=[];        // cache em memória, fonte de verdade = Firestore
       let editingIndex=null;
       let currentStatusFilter="Todos";
       let currentEmpresaFilter="Todas";
@@ -998,32 +1005,80 @@
         window.scrollTo({top:0,behavior:"smooth"});
       }
 
-      function excluirColaborador(index){
+      async function excluirColaborador(index){
         const colaborador=colaboradores[index];
         if(!colaborador)return;
         const nome=colaborador.nome||"";
         const msg=nome?'Confirma a exclusão do colaborador "'+nome+'"?':"Confirma a exclusão deste colaborador?";
-        if(confirm(msg)){
+        if(!confirm(msg))return;
+
+        try{
+          if(!colaborador.id){
+            alert("Registro sem ID do Firebase. Recarregue a página e tente novamente.");
+            return;
+          }
+          const ref=doc(db,"colaboradores",colaborador.id);
+          await deleteDoc(ref);
           colaboradores.splice(index,1);
           renderizarTabela();
-          if(editingIndex===index){resetarFormulario();}
-          else if(editingIndex!==null&&index<editingIndex){
+          if(editingIndex===index){
+            resetarFormulario();
+          }else if(editingIndex!==null&&index<editingIndex){
             editingIndex=editingIndex-1;
             atualizarBadgeModo();
           }
+        }catch(error){
+          console.error("Erro ao excluir colaborador:",error);
+          alert("Não foi possível excluir o colaborador no Firebase.");
         }
       }
 
-      function salvarColaborador(event){
+      async function salvarColaborador(event){
         event.preventDefault();
         if(!validarFormulario())return;
         const dados=coletarDadosDoFormulario();
-        if(editingIndex===null){colaboradores.push(dados);}
-        else{colaboradores[editingIndex]=dados;}
-        renderizarTabela();
-        resetarFormulario();
-        setActiveTab("lista");
-        alert("Registro salvo com sucesso.");
+
+        try{
+          if(editingIndex===null){
+            // Novo registro
+            const docRef=await addDoc(colaboradoresCollection,dados);
+            colaboradores.push({ id:docRef.id, ...dados });
+          }else{
+            // Edição
+            const atual=colaboradores[editingIndex];
+            if(!atual || !atual.id){
+              alert("Registro sem ID do Firebase. Recarregue a página e tente novamente.");
+              return;
+            }
+            const ref=doc(db,"colaboradores",atual.id);
+            await updateDoc(ref,dados);
+            colaboradores[editingIndex]={ id:atual.id, ...dados };
+          }
+          renderizarTabela();
+          resetarFormulario();
+          setActiveTab("lista");
+          alert("Registro salvo com sucesso.");
+        }catch(error){
+          console.error("Erro ao salvar colaborador:",error);
+          alert("Não foi possível salvar o registro no Firebase.");
+        }
+      }
+
+      async function carregarDoFirestore(){
+        colaboradores=[];
+        try{
+          const snapshot=await getDocs(colaboradoresCollection);
+          snapshot.forEach(function(docSnap){
+            const data=docSnap.data()||{};
+            colaboradores.push({
+              id:docSnap.id,
+              ...data
+            });
+          });
+        }catch(error){
+          console.error("Erro ao carregar dados do Firebase:",error);
+          alert("Não foi possível carregar os dados do Firebase.");
+        }
       }
 
       function configurarEventos(){
@@ -1108,4 +1163,31 @@
               alert("Só é possível editar ou remover formas personalizadas.");
               return;
             }
-            const novo=prompt('Edite o nome da forma de pagamento ou deixe em bra
+            const novo=prompt('Edite o nome da forma de pagamento ou deixe em branco para remover:',atual);
+            if(novo===null)return;
+            const texto=(novo||"").trim();
+            if(!texto){
+              const idx=select.selectedIndex;
+              if(idx>-1){select.remove(idx);}
+              select.value="Pix";
+              return;
+            }
+            const opt=select.options[select.selectedIndex];
+            opt.value=texto;
+            opt.textContent=texto;
+            select.value=texto;
+          });
+        }
+      }
+
+      // Inicialização
+      configurarEventos();
+      ajustarCampoDesligamento();
+      atualizarBadgeModo();
+      setActiveTab("lista");
+      await carregarDoFirestore();
+      renderizarTabela();
+    })();
+  </script>
+</body>
+</html>
