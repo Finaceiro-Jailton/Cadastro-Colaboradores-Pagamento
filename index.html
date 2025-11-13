@@ -691,13 +691,15 @@
     // BEGIN_FIREBASE_CONFIG
     // Import the functions you need from the SDKs you need
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
 
     // Your web app's Firebase configuration
     const firebaseConfig = {
-      apiKey: "AIzaSyDgfWkKBCWnprgd-WkZqaNshY1j19l1G4o",
+      apiKey: "AIzaSyDGfwKBCWVnprgd-WkZqaNsHy1jl91LG4o",
       authDomain: "cadastro-de-colaborador.firebaseapp.com",
       projectId: "cadastro-de-colaborador",
-      storageBucket: "cadastro-de-colaborador.appspot.com",
+      storageBucket: "cadastro-de-colaborador.firebasestorage.app",
       messagingSenderId: "1002016166104",
       appId: "1:1002016166104:web:4c98ac488dbfdd3a93c7ad"
     };
@@ -707,7 +709,6 @@
     // END_FIREBASE_CONFIG
 
     (function(){
-      const STORAGE_KEY="cadastroColaboradoresFinanceiroJailton";
       let colaboradores=[];
       let editingIndex=null;
       let currentStatusFilter="Todos";
@@ -749,22 +750,6 @@
       const tabPanels=document.querySelectorAll(".tab-panel");
       const btnAddFormaPagamento=document.querySelector(".btn-add-option[data-target='formaPagamento']");
       const btnManageFormaPagamento=document.querySelector(".btn-manage-option[data-target='formaPagamento']");
-
-      function carregarDoLocalStorage(){
-        try{
-          const dados=localStorage.getItem(STORAGE_KEY);
-          colaboradores=dados?JSON.parse(dados)||[]:[];
-          if(!Array.isArray(colaboradores)){colaboradores=[];}
-        }catch(e){colaboradores=[];}
-      }
-
-      function salvarNoLocalStorage(){
-        try{
-          localStorage.setItem(STORAGE_KEY,JSON.stringify(colaboradores));
-        }catch(e){
-          alert("Não foi possível salvar os dados no navegador.");
-        }
-      }
 
       function setActiveTab(tabName){
         tabButtons.forEach(function(btn){
@@ -1020,7 +1005,6 @@
         const msg=nome?'Confirma a exclusão do colaborador "'+nome+'"?':"Confirma a exclusão deste colaborador?";
         if(confirm(msg)){
           colaboradores.splice(index,1);
-          salvarNoLocalStorage();
           renderizarTabela();
           if(editingIndex===index){resetarFormulario();}
           else if(editingIndex!==null&&index<editingIndex){
@@ -1036,7 +1020,6 @@
         const dados=coletarDadosDoFormulario();
         if(editingIndex===null){colaboradores.push(dados);}
         else{colaboradores[editingIndex]=dados;}
-        salvarNoLocalStorage();
         renderizarTabela();
         resetarFormulario();
         setActiveTab("lista");
@@ -1125,34 +1108,4 @@
               alert("Só é possível editar ou remover formas personalizadas.");
               return;
             }
-            const novo=prompt('Edite o nome da forma de pagamento ou deixe em branco para remover:',atual);
-            if(novo===null)return;
-            const texto=(novo||"").trim();
-            if(!texto){
-              const idx=select.selectedIndex;
-              if(idx>-1){select.remove(idx);}
-              select.value="Pix";
-              return;
-            }
-            const opt=select.options[select.selectedIndex];
-            opt.value=texto;
-            opt.textContent=texto;
-            select.value=texto;
-          });
-        }
-      }
-
-      function inicializar(){
-        carregarDoLocalStorage();
-        configurarEventos();
-        ajustarCampoDesligamento();
-        atualizarBadgeModo();
-        setActiveTab("lista");
-        renderizarTabela();
-      }
-
-      inicializar();
-    })();
-  </script>
-</body>
-</html>
+            const novo=prompt('Edite o nome da forma de pagamento ou deixe em bra
