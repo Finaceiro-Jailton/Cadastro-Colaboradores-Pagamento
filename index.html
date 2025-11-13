@@ -688,7 +688,7 @@
   </div>
 
   <script type="module">
-    // Import SDKs Firebase
+    // === Firebase + Firestore CONFIG (principal) ===
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
     import {
       getFirestore,
@@ -700,7 +700,6 @@
       doc
     } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-    // Configuração do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDGfwKBCWVnprgd-WkZqaNsHy1jl91LG4o",
       authDomain: "cadastro-de-colaborador.firebaseapp.com",
@@ -710,20 +709,20 @@
       appId: "1:1002016166104:web:4c98ac488dbfdd3a93c7ad"
     };
 
-    // Inicializa Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const colaboradoresCollection = collection(db, "colaboradores");
 
-    (async function(){
-      let colaboradores=[];        // cache em memória, fonte de verdade = Firestore
-      let editingIndex=null;
-      let currentStatusFilter="Todos";
-      let currentEmpresaFilter="Todas";
-      let currentSearchTerm="";
+    (function(){
+      // cache local, mas a VERDADE é o Firestore
+      let colaboradores = [];
+      let editingIndex = null;
+      let currentStatusFilter = "Todos";
+      let currentEmpresaFilter = "Todas";
+      let currentSearchTerm = "";
 
-      const form=document.getElementById("form-colaborador");
-      const campos={
+      const form = document.getElementById("form-colaborador");
+      const campos = {
         empresa:document.getElementById("empresa"),
         nome:document.getElementById("nome"),
         cpf:document.getElementById("cpf"),
@@ -745,18 +744,18 @@
         observacoes:document.getElementById("observacoes")
       };
 
-      const badgeModo=document.getElementById("badgeModo");
-      const resumoTotal=document.getElementById("resumoTotal");
-      const filtroStatus=document.getElementById("filtroStatus");
-      const filtroEmpresa=document.getElementById("filtroEmpresa");
-      const buscaTexto=document.getElementById("buscaTexto");
-      const tabelaBody=document.querySelector("#tabela-colaboradores tbody");
-      const btnNovo=document.getElementById("btnNovo");
-      const btnCancelar=document.getElementById("btnCancelar");
-      const tabButtons=document.querySelectorAll(".tab-button");
-      const tabPanels=document.querySelectorAll(".tab-panel");
-      const btnAddFormaPagamento=document.querySelector(".btn-add-option[data-target='formaPagamento']");
-      const btnManageFormaPagamento=document.querySelector(".btn-manage-option[data-target='formaPagamento']");
+      const badgeModo = document.getElementById("badgeModo");
+      const resumoTotal = document.getElementById("resumoTotal");
+      const filtroStatus = document.getElementById("filtroStatus");
+      const filtroEmpresa = document.getElementById("filtroEmpresa");
+      const buscaTexto = document.getElementById("buscaTexto");
+      const tabelaBody = document.querySelector("#tabela-colaboradores tbody");
+      const btnNovo = document.getElementById("btnNovo");
+      const btnCancelar = document.getElementById("btnCancelar");
+      const tabButtons = document.querySelectorAll(".tab-button");
+      const tabPanels = document.querySelectorAll(".tab-panel");
+      const btnAddFormaPagamento = document.querySelector(".btn-add-option[data-target='formaPagamento']");
+      const btnManageFormaPagamento = document.querySelector(".btn-manage-option[data-target='formaPagamento']");
 
       function setActiveTab(tabName){
         tabButtons.forEach(function(btn){
@@ -784,8 +783,6 @@
         if(campos.status.value==="Ativo"){
           campos.dataDesligamento.value="";
           campos.dataDesligamento.disabled=true;
-        }else if(campos.status.value==="Desligado"){
-          campos.dataDesligamento.disabled=false;
         }else{
           campos.dataDesligamento.disabled=false;
         }
@@ -1010,15 +1007,12 @@
         if(!colaborador)return;
         const nome=colaborador.nome||"";
         const msg=nome?'Confirma a exclusão do colaborador "'+nome+'"?':"Confirma a exclusão deste colaborador?";
-        if(!confirm(msg))return;
+        if(!confirm(msg)) return;
 
         try{
-          if(!colaborador.id){
-            alert("Registro sem ID do Firebase. Recarregue a página e tente novamente.");
-            return;
+          if(colaborador.id){
+            await deleteDoc(doc(db,"colaboradores",colaborador.id));
           }
-          const ref=doc(db,"colaboradores",colaborador.id);
-          await deleteDoc(ref);
           colaboradores.splice(index,1);
           renderizarTabela();
           if(editingIndex===index){
@@ -1027,9 +1021,9 @@
             editingIndex=editingIndex-1;
             atualizarBadgeModo();
           }
-        }catch(error){
-          console.error("Erro ao excluir colaborador:",error);
-          alert("Não foi possível excluir o colaborador no Firebase.");
+        }catch(err){
+          console.error(err);
+          alert("Erro ao excluir colaborador na nuvem. Tente novamente.");
         }
       }
 
@@ -1040,44 +1034,43 @@
 
         try{
           if(editingIndex===null){
-            // Novo registro
-            const docRef=await addDoc(colaboradoresCollection,dados);
-            colaboradores.push({ id:docRef.id, ...dados });
+            // NOVO -> addDoc
+            const docRef = await addDoc(colaboradoresCollection, dados);
+            colaboradores.push({id:docRef.id, ...dados});
           }else{
-            // Edição
-            const atual=colaboradores[editingIndex];
-            if(!atual || !atual.id){
-              alert("Registro sem ID do Firebase. Recarregue a página e tente novamente.");
-              return;
+            // EDITAR -> updateDoc
+            const existente = colaboradores[editingIndex];
+            if(existente && existente.id){
+              const ref = doc(db,"colaboradores",existente.id);
+              await updateDoc(ref, dados);
+              colaboradores[editingIndex] = {id: existente.id, ...dados};
+            }else{
+              // fallback: se não tiver id (caso bem raro)
+              const docRef = await addDoc(colaboradoresCollection, dados);
+              colaboradores[editingIndex] = {id:docRef.id, ...dados};
             }
-            const ref=doc(db,"colaboradores",atual.id);
-            await updateDoc(ref,dados);
-            colaboradores[editingIndex]={ id:atual.id, ...dados };
           }
+
           renderizarTabela();
           resetarFormulario();
           setActiveTab("lista");
-          alert("Registro salvo com sucesso.");
-        }catch(error){
-          console.error("Erro ao salvar colaborador:",error);
-          alert("Não foi possível salvar o registro no Firebase.");
+          alert("Registro salvo com sucesso na nuvem.");
+        }catch(err){
+          console.error(err);
+          alert("Erro ao salvar no Firebase. Verifique a conexão ou as regras do Firestore.");
         }
       }
 
-      async function carregarDoFirestore(){
-        colaboradores=[];
+      async function carregarColaboradores(){
         try{
-          const snapshot=await getDocs(colaboradoresCollection);
-          snapshot.forEach(function(docSnap){
-            const data=docSnap.data()||{};
-            colaboradores.push({
-              id:docSnap.id,
-              ...data
-            });
+          const snapshot = await getDocs(colaboradoresCollection);
+          colaboradores = snapshot.docs.map(function(d){
+            return { id:d.id, ...d.data() };
           });
-        }catch(error){
-          console.error("Erro ao carregar dados do Firebase:",error);
-          alert("Não foi possível carregar os dados do Firebase.");
+          renderizarTabela();
+        }catch(err){
+          console.error(err);
+          alert("Erro ao carregar colaboradores da nuvem.");
         }
       }
 
@@ -1180,13 +1173,16 @@
         }
       }
 
-      // Inicialização
-      configurarEventos();
-      ajustarCampoDesligamento();
-      atualizarBadgeModo();
-      setActiveTab("lista");
-      await carregarDoFirestore();
-      renderizarTabela();
+      function inicializar(){
+        configurarEventos();
+        ajustarCampoDesligamento();
+        atualizarBadgeModo();
+        setActiveTab("lista");
+        renderizarTabela();   // mostra algo mesmo antes de carregar
+        carregarColaboradores(); // sincroniza com a nuvem
+      }
+
+      inicializar();
     })();
   </script>
 </body>
